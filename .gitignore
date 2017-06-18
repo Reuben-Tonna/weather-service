@@ -25,3 +25,4 @@ nbdist/
 
 .mvn/
 .idea/
+.ftp-inbound-static-data/
