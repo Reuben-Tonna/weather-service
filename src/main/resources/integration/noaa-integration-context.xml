@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-file="http://www.springframework.org/schema/integration/file"
+       xmlns:int-ftp="http://www.springframework.org/schema/integration/ftp"
+
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/integration/file http://www.springframework.org/schema/integration/file/spring-integration-file.xsd
+		http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration.xsd
+		http://www.springframework.org/schema/integration/ftp http://www.springframework.org/schema/integration/ftp/spring-integration-ftp.xsd">
+
+    <int-ftp:inbound-channel-adapter
+            id="noaa-ftp-adapter"
+            channel="noaa-static-data-channel"
+            session-factory="noaaFtpSessionFactory"
+            auto-create-local-directory="true"
+            remote-file-separator="/"
+            local-directory="ftp-inbound-static-data"
+            delete-remote-files="false"
+            remote-directory="${application.noaa.ftp.staticDataPath}"
+            filename-regex="${application.noaa.staticDataFileNameRegex}"
+            temporary-file-suffix=".writing"
+            auto-startup="true">
+        <int:poller fixed-rate="5000"/>
+    </int-ftp:inbound-channel-adapter>
+
+    <int:channel id="noaa-stations-static-data-channel"/>
+
+    <int:channel id="noaa-countries-static-data-channel"/>
+
+    <int:router input-channel="noaa-static-data-channel" expression="payload.name">
+        <int:mapping value="ghcnd-countries.txt" channel="noaa-countries-static-data-channel"/>
+        <int:mapping value="ghcnd-stations.txt" channel="noaa-stations-static-data-channel"/>
+    </int:router>
+
+    <int:channel id="country-data-rows-channel"/>
+
+    <int:splitter input-channel="noaa-countries-static-data-channel" output-channel="country-data-rows-channel"
+              expression="T(org.apache.commons.io.FileUtils).lineIterator(payload)"/>
+
+    <int:channel id="country-channel"/>
+
+    <int:transformer
+            input-channel="country-data-rows-channel"
+            ref="countryTransformer"
+            method="transform"
+            output-channel="country-channel"/>
+
+    <int:service-activator
+            input-channel="country-channel"
+            ref="countryLoader"
+            method="load"
+    />
+
+    <int:channel id="station-data-rows-channel"/>
+
+    <int:splitter input-channel="noaa-stations-static-data-channel" output-channel="station-data-rows-channel"
+                  expression="T(org.apache.commons.io.FileUtils).lineIterator(payload)"/>
+
+    <int:channel id="station-channel"/>
+
+    <int:transformer
+            input-channel="station-data-rows-channel"
+            ref="stationTransformer"
+            method="transform"
+            output-channel="station-channel"/>
+
+    <int:service-activator
+            input-channel="station-channel"
+            ref="stationLoader"
+            method="load"
+    />
+
+</beans>

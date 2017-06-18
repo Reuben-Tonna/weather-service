@@ -1,0 +1,9 @@
+application:
+  noaa:
+    ftp:
+      host: ftp.ncdc.noaa.gov
+      port: 21
+      username: anonymous
+      password: # passwords should be hashed at least to provide some privacy; for this example plain text will do
+      staticDataPath: pub/data/ghcn/daily
+    staticDataFileNameRegex: ghcnd-(countries|stations).txt
